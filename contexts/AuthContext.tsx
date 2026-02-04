@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, Profile } from '../lib/supabase';
+import { configureRevenueCat, setUserID, logout as revenueCatLogout } from '../lib/revenuecat';
 
 type AuthContextType = {
   session: Session | null;
@@ -56,12 +57,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    configureRevenueCat().catch(err => {
+      console.warn('RevenueCat configuration failed:', err);
+    });
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       (() => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
           fetchProfile(session.user.id);
+          setUserID(session.user.id).catch(err => {
+            console.warn('Failed to set RevenueCat user ID:', err);
+          });
         }
         setLoading(false);
       })();
@@ -73,8 +81,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         if (session?.user) {
           fetchProfile(session.user.id);
+          setUserID(session.user.id).catch(err => {
+            console.warn('Failed to set RevenueCat user ID:', err);
+          });
         } else {
           setProfile(null);
+          revenueCatLogout().catch(err => {
+            console.warn('Failed to logout from RevenueCat:', err);
+          });
         }
         setLoading(false);
       })();

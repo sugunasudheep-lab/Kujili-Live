@@ -1,36 +1,66 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Coins, Star, Zap, Check, ArrowLeft, ShoppingBag } from 'lucide-react-native';
+import { Coins, Star, Zap, Check, ArrowLeft, ShoppingBag, RefreshCw } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { supabase, CoinPackage } from '../../lib/supabase';
+import { CoinPackage } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { processCoinPurchase, getCoinPackages } from '../../lib/coinPurchaseService';
+import { getOfferings, isRevenueCatConfigured } from '../../lib/revenuecat';
+import { PurchasesPackage } from 'react-native-purchases';
 
 export default function CoinPurchaseScreen() {
   const router = useRouter();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [packages, setPackages] = useState<CoinPackage[]>([]);
+  const [revenueCatPackages, setRevenueCatPackages] = useState<Map<string, PurchasesPackage>>(new Map());
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const [isRevenueCatReady, setIsRevenueCatReady] = useState(false);
 
   useEffect(() => {
-    fetchCoinPackages();
+    initializePurchaseScreen();
   }, []);
+
+  const initializePurchaseScreen = async () => {
+    await fetchCoinPackages();
+    await loadRevenueCatOfferings();
+    setLoading(false);
+  };
 
   const fetchCoinPackages = async () => {
     try {
-      const { data, error } = await supabase
-        .from('coin_packages')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order');
-
-      if (error) throw error;
-      setPackages(data || []);
+      const data = await getCoinPackages();
+      setPackages(data);
     } catch (error) {
       console.error('Error fetching coin packages:', error);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const loadRevenueCatOfferings = async () => {
+    if (Platform.OS === 'web' || !isRevenueCatConfigured()) {
+      console.log('RevenueCat not available - using demo mode');
+      setIsRevenueCatReady(false);
+      return;
+    }
+
+    try {
+      const offerings = await getOfferings();
+      if (offerings && offerings.availablePackages) {
+        const packageMap = new Map<string, PurchasesPackage>();
+        offerings.availablePackages.forEach(pkg => {
+          packageMap.set(pkg.product.identifier, pkg);
+        });
+        setRevenueCatPackages(packageMap);
+        setIsRevenueCatReady(true);
+        console.log('RevenueCat offerings loaded successfully');
+      } else {
+        console.warn('No RevenueCat offerings available');
+        setIsRevenueCatReady(false);
+      }
+    } catch (error) {
+      console.error('Error loading RevenueCat offerings:', error);
+      setIsRevenueCatReady(false);
     }
   };
 
@@ -42,36 +72,48 @@ export default function CoinPurchaseScreen() {
 
     setSelectedPackage(pkg.id);
 
+    const totalCoins = pkg.coin_amount + pkg.bonus_coins;
+    const productId = Platform.OS === 'ios'
+      ? pkg.app_store_product_id
+      : pkg.play_store_product_id;
+
+    const revenueCatPackage = productId ? revenueCatPackages.get(productId) : undefined;
+
+    const purchaseMode = isRevenueCatReady && revenueCatPackage ? 'real' : 'demo';
+
     Alert.alert(
       'Purchase Coins',
-      `You are about to purchase ${pkg.coin_amount + pkg.bonus_coins} coins for ₹${pkg.price_inr}.\n\nNote: To enable real purchases, this app needs to be exported and built with RevenueCat integration for Play Store and App Store in-app purchases.`,
+      purchaseMode === 'real'
+        ? `You are about to purchase ${totalCoins} coins for ${Platform.OS === 'ios' ? '$' + pkg.price_usd : '₹' + pkg.price_inr}.\n\nPayment will be processed through ${Platform.OS === 'ios' ? 'App Store' : 'Google Play Store'}.`
+        : `You are about to purchase ${totalCoins} coins for ₹${pkg.price_inr}.\n\n⚠️ DEMO MODE: This is a simulated purchase. To enable real purchases, configure RevenueCat API keys in your .env file and ensure products are set up in RevenueCat dashboard.`,
       [
         { text: 'Cancel', style: 'cancel', onPress: () => setSelectedPackage(null) },
         {
-          text: 'Demo Purchase',
+          text: purchaseMode === 'real' ? 'Purchase' : 'Demo Purchase',
           onPress: async () => {
             try {
-              const totalCoins = pkg.coin_amount + pkg.bonus_coins;
-
-              const { error } = await supabase.rpc('add_coins_to_user', {
-                p_user_id: user.id,
-                p_amount: totalCoins,
-                p_transaction_type: 'purchase',
-                p_package_id: pkg.id,
-                p_description: `Purchased ${pkg.name}`,
-                p_reference_id: `demo_${Date.now()}`,
-              });
-
-              if (error) throw error;
-
-              Alert.alert(
-                'Success!',
-                `${totalCoins} coins have been added to your account!`,
-                [{ text: 'OK', onPress: () => router.back() }]
+              const result = await processCoinPurchase(
+                user.id,
+                pkg,
+                revenueCatPackage
               );
-            } catch (error) {
+
+              if (result.success) {
+                await refreshProfile();
+
+                Alert.alert(
+                  'Success!',
+                  `${result.coinsAdded} coins have been added to your account!\n\nNew balance: ${result.newBalance} coins`,
+                  [{ text: 'OK', onPress: () => router.back() }]
+                );
+              } else {
+                if (result.error !== 'Purchase cancelled by user') {
+                  Alert.alert('Purchase Failed', result.error || 'An unknown error occurred');
+                }
+              }
+            } catch (error: any) {
               console.error('Error processing purchase:', error);
-              Alert.alert('Error', 'Failed to process purchase. Please try again.');
+              Alert.alert('Error', error.message || 'Failed to process purchase. Please try again.');
             } finally {
               setSelectedPackage(null);
             }
@@ -84,6 +126,10 @@ export default function CoinPurchaseScreen() {
   const renderPackage = (pkg: CoinPackage) => {
     const totalCoins = pkg.coin_amount + pkg.bonus_coins;
     const isSelected = selectedPackage === pkg.id;
+    const productId = Platform.OS === 'ios'
+      ? pkg.app_store_product_id
+      : pkg.play_store_product_id;
+    const hasRevenueCatProduct = productId ? revenueCatPackages.has(productId) : false;
 
     return (
       <TouchableOpacity
@@ -106,6 +152,12 @@ export default function CoinPurchaseScreen() {
           {pkg.discount_percentage > 0 && (
             <View style={styles.discountBadge}>
               <Text style={styles.discountText}>{pkg.discount_percentage}% OFF</Text>
+            </View>
+          )}
+
+          {!isRevenueCatReady && Platform.OS !== 'web' && (
+            <View style={styles.demoBadge}>
+              <Text style={styles.demoText}>DEMO</Text>
             </View>
           )}
 
@@ -158,9 +210,9 @@ export default function CoinPurchaseScreen() {
             <ArrowLeft size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Purchase Coins</Text>
-          <View style={styles.headerRight}>
-            <ShoppingBag size={24} color="#fff" />
-          </View>
+          <TouchableOpacity onPress={loadRevenueCatOfferings} style={styles.headerRight}>
+            <RefreshCw size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.balanceCard}>
@@ -172,6 +224,15 @@ export default function CoinPurchaseScreen() {
             </View>
           </LinearGradient>
         </View>
+
+        {!isRevenueCatReady && Platform.OS !== 'web' && (
+          <View style={styles.warningCard}>
+            <Text style={styles.warningTitle}>⚠️ Demo Mode</Text>
+            <Text style={styles.warningText}>
+              RevenueCat is not configured. Purchases are simulated. Configure API keys to enable real purchases.
+            </Text>
+          </View>
+        )}
 
         <ScrollView
           style={styles.scrollView}
@@ -185,9 +246,15 @@ export default function CoinPurchaseScreen() {
             </Text>
           </View>
 
-          <View style={styles.packagesGrid}>
-            {packages.map(pkg => renderPackage(pkg))}
-          </View>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading packages...</Text>
+            </View>
+          ) : (
+            <View style={styles.packagesGrid}>
+              {packages.map(pkg => renderPackage(pkg))}
+            </View>
+          )}
 
           <View style={styles.infoSection}>
             <View style={styles.infoCard}>
@@ -228,12 +295,15 @@ export default function CoinPurchaseScreen() {
           </View>
 
           <View style={styles.noteContainer}>
-            <Text style={styles.noteTitle}>Payment Methods</Text>
+            <Text style={styles.noteTitle}>Payment Processing</Text>
             <Text style={styles.noteText}>
-              Payments are processed securely through Google Play Store or Apple App Store. Your purchase history and receipts are available in your respective store account.
+              {isRevenueCatReady
+                ? `Payments are processed securely through ${Platform.OS === 'ios' ? 'Apple App Store' : 'Google Play Store'}. Your purchase history and receipts are available in your ${Platform.OS === 'ios' ? 'App Store' : 'Play Store'} account.`
+                : 'RevenueCat is integrated and ready. Configure your API keys in the .env file to enable real purchases through Play Store and App Store.'
+              }
             </Text>
             <Text style={[styles.noteText, { marginTop: 8 }]}>
-              For this demo, purchases are simulated. To enable real purchases, export the app and integrate RevenueCat with Play Store and App Store.
+              All purchases are powered by RevenueCat, ensuring secure payment processing and cross-platform support.
             </Text>
           </View>
         </ScrollView>
@@ -271,7 +341,7 @@ const styles = StyleSheet.create({
   },
   balanceCard: {
     marginHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 16,
     borderRadius: 16,
     overflow: 'hidden',
   },
@@ -294,12 +364,40 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  warningCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: 'rgba(255, 165, 0, 0.2)',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFA500',
+  },
+  warningTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFA500',
+    marginBottom: 8,
+  },
+  warningText: {
+    fontSize: 13,
+    color: '#fff',
+    lineHeight: 18,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 16,
     paddingBottom: 40,
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#aaa',
   },
   section: {
     marginBottom: 20,
@@ -356,6 +454,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   discountText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  demoBadge: {
+    position: 'absolute',
+    top: 50,
+    left: 12,
+    backgroundColor: '#FFA500',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  demoText: {
     fontSize: 10,
     fontWeight: 'bold',
     color: '#fff',
