@@ -101,3 +101,33 @@ export type Gift = {
   is_premium: boolean;
   created_at: string;
 };
+
+export type CoinPackage = {
+  id: string;
+  name: string;
+  coin_amount: number;
+  bonus_coins: number;
+  price_usd: number;
+  price_inr: number;
+  play_store_product_id?: string;
+  app_store_product_id?: string;
+  is_popular: boolean;
+  discount_percentage: number;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type CoinTransaction = {
+  id: string;
+  user_id: string;
+  transaction_type: 'purchase' | 'gift_sent' | 'gift_received' | 'refund' | 'bonus' | 'stream_income' | 'reward';
+  amount: number;
+  balance_after: number;
+  package_id?: string;
+  related_user_id?: string;
+  reference_id?: string;
+  description?: string;
+  metadata?: any;
+  created_at: string;
+};

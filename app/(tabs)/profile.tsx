@@ -11,7 +11,7 @@ export default function ProfileScreen() {
   const handleSignOut = async () => {
     Alert.alert(
       'Logout',
-      'Are you sure you want to logout?\nक्या आप लॉगआउट करना चाहते हैं?',
+      'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -35,8 +35,8 @@ export default function ProfileScreen() {
     <LinearGradient colors={['#1a1a2e', '#16213e']} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>👤 Profile</Text>
-          <Text style={styles.headerSubtitle}>प्रोफाइल</Text>
+          <Text style={styles.headerTitle}>Profile 👤</Text>
+          <Text style={styles.headerSubtitle}>Your Account</Text>
         </View>
 
         <LinearGradient
@@ -87,8 +87,8 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.walletSection}>
-          <Text style={styles.sectionTitle}>💰 Wallet</Text>
-          <Text style={styles.sectionSubtitle}>वॉलेट</Text>
+          <Text style={styles.sectionTitle}>Wallet 💰</Text>
+          <Text style={styles.sectionSubtitle}>Your Balance & Earnings</Text>
 
           <LinearGradient
             colors={['#FFD700', '#FF8A00']}
@@ -105,9 +105,12 @@ export default function ProfileScreen() {
                   <Text style={styles.walletValueINR}>≈ {formatINR(profile?.coins || 0)}</Text>
                 </View>
               </View>
-              <TouchableOpacity style={styles.buyButton}>
+              <TouchableOpacity
+                style={styles.buyButton}
+                onPress={() => router.push('/coins/purchase')}
+              >
                 <ShoppingBag size={20} color="#FFD700" />
-                <Text style={styles.buyButtonText}>Buy</Text>
+                <Text style={styles.buyButtonText}>Buy Coins</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -139,15 +142,18 @@ export default function ProfileScreen() {
             <Settings size={24} color="#FF4B6E" />
             <View style={styles.menuContent}>
               <Text style={styles.menuText}>Settings</Text>
-              <Text style={styles.menuTextHindi}>सेटिंग्स</Text>
+              <Text style={styles.menuTextHindi}>App preferences</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/coins/purchase')}
+          >
             <ShoppingBag size={24} color="#FFD700" />
             <View style={styles.menuContent}>
-              <Text style={styles.menuText}>Purchase History</Text>
-              <Text style={styles.menuTextHindi}>खरीद इतिहास</Text>
+              <Text style={styles.menuText}>Buy Coins</Text>
+              <Text style={styles.menuTextHindi}>Purchase coin packages</Text>
             </View>
           </TouchableOpacity>
 
@@ -155,14 +161,14 @@ export default function ProfileScreen() {
             <LogOut size={24} color="#FF4B6E" />
             <View style={styles.menuContent}>
               <Text style={styles.menuText}>Logout</Text>
-              <Text style={styles.menuTextHindi}>लॉगआउट</Text>
+              <Text style={styles.menuTextHindi}>Sign out of your account</Text>
             </View>
           </TouchableOpacity>
         </View>
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoText}>🇮🇳 Made in India for India</Text>
-          <Text style={styles.infoTextHindi}>भारत में भारत के लिए बनाया गया</Text>
+          <Text style={styles.infoText}>Made in India 🇮🇳</Text>
+          <Text style={styles.infoTextHindi}>Proudly serving Indian creators</Text>
         </View>
       </ScrollView>
     </LinearGradient>
