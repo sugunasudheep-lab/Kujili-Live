@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Coins, Gem, Users, UserPlus, Settings, LogOut, ShoppingBag, MapPin, Phone } from 'lucide-react-native';
+import { Coins, Gem, Users, UserPlus, Settings, LogOut, ShoppingBag, MapPin } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function ProfileScreen() {
@@ -58,15 +58,6 @@ export default function ProfileScreen() {
               <MapPin size={14} color="#fff" />
               <Text style={styles.locationText}>
                 {profile.location_city}, {profile.location_state || 'India'}
-              </Text>
-            </View>
-          )}
-
-          {profile?.phone_number && (
-            <View style={styles.phoneContainer}>
-              <Phone size={14} color="#fff" />
-              <Text style={styles.phoneText}>
-                {profile.country_code} {profile.phone_number}
               </Text>
             </View>
           )}
@@ -238,17 +229,6 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   locationText: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  phoneContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    gap: 6,
-  },
-  phoneText: {
     fontSize: 14,
     color: '#fff',
     opacity: 0.9,

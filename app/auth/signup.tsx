@@ -3,12 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView,
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
-import { UserPlus, Phone, Mail, Lock, User } from 'lucide-react-native';
+import { UserPlus, Mail, Lock, User } from 'lucide-react-native';
 
 export default function Signup() {
   const router = useRouter();
-  const [signupMethod, setSignupMethod] = useState<'email' | 'phone'>('phone');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -28,7 +26,7 @@ export default function Signup() {
   const handleSignup = async () => {
     if (loading) return;
 
-    if (!username || !password || !fullName) {
+    if (!username || !password || !fullName || !email) {
       Alert.alert('Error', 'कृपया सभी फ़ील्ड भरें\nPlease fill all fields');
       return;
     }
@@ -40,36 +38,10 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      let authResult;
-
-      if (signupMethod === 'email') {
-        if (!email) {
-          Alert.alert('Error', 'Please enter email');
-          return;
-        }
-
-        authResult = await supabase.auth.signUp({
-          email,
-          password,
-        });
-      } else {
-        if (!phoneNumber) {
-          Alert.alert('Error', 'कृपया फोन नंबर दर्ज करें\nPlease enter phone number');
-          return;
-        }
-
-        if (phoneNumber.length !== 10) {
-          Alert.alert('Error', 'Phone number must be 10 digits');
-          return;
-        }
-
-        const formattedPhone = `+91${phoneNumber}`;
-
-        authResult = await supabase.auth.signUp({
-          phone: formattedPhone,
-          password,
-        });
-      }
+      const authResult = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
       if (authResult.error) throw authResult.error;
 
@@ -83,8 +55,6 @@ export default function Signup() {
             username: username.toLowerCase().replace(/\s+/g, ''),
             full_name: fullName,
             avatar_url: avatarUrl,
-            phone_number: signupMethod === 'phone' ? phoneNumber : null,
-            country_code: signupMethod === 'phone' ? '+91' : null,
             preferred_language: 'hi',
           });
 
@@ -105,7 +75,7 @@ export default function Signup() {
       let errorMessage = error.message || 'Signup failed';
 
       if (error.message?.includes('duplicate')) {
-        errorMessage = 'Username or phone number already exists\nउपयोगकर्ता नाम या फोन नंबर पहले से मौजूद है';
+        errorMessage = 'Username or email already exists\nउपयोगकर्ता नाम या ईमेल पहले से मौजूद है';
       }
 
       Alert.alert('Signup Failed', errorMessage);
@@ -133,27 +103,6 @@ export default function Signup() {
           </View>
 
           <View style={styles.formContainer}>
-            <View style={styles.methodSelector}>
-              <TouchableOpacity
-                style={[styles.methodButton, signupMethod === 'phone' && styles.methodButtonActive]}
-                onPress={() => setSignupMethod('phone')}
-              >
-                <Phone size={20} color={signupMethod === 'phone' ? '#6B46FF' : '#666'} />
-                <Text style={[styles.methodText, signupMethod === 'phone' && styles.methodTextActive]}>
-                  Phone
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.methodButton, signupMethod === 'email' && styles.methodButtonActive]}
-                onPress={() => setSignupMethod('email')}
-              >
-                <Mail size={20} color={signupMethod === 'email' ? '#6B46FF' : '#666'} />
-                <Text style={[styles.methodText, signupMethod === 'email' && styles.methodTextActive]}>
-                  Email
-                </Text>
-              </TouchableOpacity>
-            </View>
-
             <View style={styles.inputContainer}>
               <User size={20} color="#666" style={styles.inputIcon} />
               <TextInput
@@ -177,34 +126,18 @@ export default function Signup() {
               />
             </View>
 
-            {signupMethod === 'phone' ? (
-              <View style={styles.inputContainer}>
-                <Phone size={20} color="#666" style={styles.inputIcon} />
-                <Text style={styles.countryCode}>+91</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="फोन नंबर / Phone Number"
-                  placeholderTextColor="#999"
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                />
-              </View>
-            ) : (
-              <View style={styles.inputContainer}>
-                <Mail size={20} color="#666" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email Address"
-                  placeholderTextColor="#999"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-            )}
+            <View style={styles.inputContainer}>
+              <Mail size={20} color="#666" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="ईमेल / Email Address"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
             <View style={styles.inputContainer}>
               <Lock size={20} color="#666" style={styles.inputIcon} />
@@ -299,38 +232,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  methodSelector: {
-    flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 20,
-  },
-  methodButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  methodButtonActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  methodText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
-  },
-  methodTextActive: {
-    color: '#6B46FF',
-  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -343,12 +244,6 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     marginRight: 12,
-  },
-  countryCode: {
-    fontSize: 16,
-    color: '#333',
-    marginRight: 8,
-    fontWeight: '600',
   },
   input: {
     flex: 1,

@@ -3,12 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView,
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
-import { LogIn, Phone, Mail, Lock } from 'lucide-react-native';
+import { LogIn, Mail, Lock } from 'lucide-react-native';
 
 export default function Login() {
   const router = useRouter();
-  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('phone');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,33 +14,17 @@ export default function Login() {
   const handleLogin = async () => {
     if (loading) return;
 
+    if (!email || !password) {
+      Alert.alert('Error', 'कृपया ईमेल और पासवर्ड दर्ज करें\nPlease enter email and password');
+      return;
+    }
+
     setLoading(true);
     try {
-      let result;
-
-      if (loginMethod === 'email') {
-        if (!email || !password) {
-          Alert.alert('Error', 'Please enter email and password');
-          return;
-        }
-
-        result = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-      } else {
-        if (!phoneNumber || !password) {
-          Alert.alert('Error', 'कृपया फोन नंबर और पासवर्ड दर्ज करें\nPlease enter phone number and password');
-          return;
-        }
-
-        const formattedPhone = phoneNumber.startsWith('+91') ? phoneNumber : `+91${phoneNumber}`;
-
-        result = await supabase.auth.signInWithPassword({
-          phone: formattedPhone,
-          password,
-        });
-      }
+      const result = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
       if (result.error) throw result.error;
 
@@ -73,55 +55,18 @@ export default function Login() {
           </View>
 
           <View style={styles.formContainer}>
-            <View style={styles.methodSelector}>
-              <TouchableOpacity
-                style={[styles.methodButton, loginMethod === 'phone' && styles.methodButtonActive]}
-                onPress={() => setLoginMethod('phone')}
-              >
-                <Phone size={20} color={loginMethod === 'phone' ? '#FF4B6E' : '#666'} />
-                <Text style={[styles.methodText, loginMethod === 'phone' && styles.methodTextActive]}>
-                  Phone
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.methodButton, loginMethod === 'email' && styles.methodButtonActive]}
-                onPress={() => setLoginMethod('email')}
-              >
-                <Mail size={20} color={loginMethod === 'email' ? '#FF4B6E' : '#666'} />
-                <Text style={[styles.methodText, loginMethod === 'email' && styles.methodTextActive]}>
-                  Email
-                </Text>
-              </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Mail size={20} color="#666" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="ईमेल / Email Address"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
             </View>
-
-            {loginMethod === 'phone' ? (
-              <View style={styles.inputContainer}>
-                <Phone size={20} color="#666" style={styles.inputIcon} />
-                <Text style={styles.countryCode}>+91</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="फोन नंबर / Phone Number"
-                  placeholderTextColor="#999"
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                />
-              </View>
-            ) : (
-              <View style={styles.inputContainer}>
-                <Mail size={20} color="#666" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email Address"
-                  placeholderTextColor="#999"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-            )}
 
             <View style={styles.inputContainer}>
               <Lock size={20} color="#666" style={styles.inputIcon} />
@@ -216,38 +161,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  methodSelector: {
-    flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 20,
-  },
-  methodButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  methodButtonActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  methodText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
-  },
-  methodTextActive: {
-    color: '#FF4B6E',
-  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -260,12 +173,6 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     marginRight: 12,
-  },
-  countryCode: {
-    fontSize: 16,
-    color: '#333',
-    marginRight: 8,
-    fontWeight: '600',
   },
   input: {
     flex: 1,
