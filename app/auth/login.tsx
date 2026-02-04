@@ -3,15 +3,17 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView,
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
-import { LogIn, Mail, Lock } from 'lucide-react-native';
+import { LogIn, Mail, Lock, Phone, MessageSquare } from 'lucide-react-native';
 
 export default function Login() {
   const router = useRouter();
+  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleEmailLogin = async () => {
     if (loading) return;
 
     if (!email || !password) {
@@ -36,6 +38,72 @@ export default function Login() {
     }
   };
 
+  const handlePhoneOTPLogin = async () => {
+    if (loading) return;
+
+    if (!phoneNumber) {
+      Alert.alert('Error', 'कृपया फोन नंबर दर्ज करें\nPlease enter phone number');
+      return;
+    }
+
+    if (phoneNumber.length !== 10) {
+      Alert.alert('Error', 'Phone number must be 10 digits');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formattedPhone = `+91${phoneNumber}`;
+
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone,
+      });
+
+      if (error) throw error;
+
+      Alert.alert(
+        'OTP Sent! OTP भेजा गया!',
+        'Please check your SMS for the verification code\nकृपया सत्यापन कोड के लिए अपना SMS जांचें',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.push({
+              pathname: '/auth/verify-otp',
+              params: { phone: formattedPhone },
+            }),
+          },
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to send OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (provider: 'facebook' | 'twitter') => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: 'kujili://auth/callback',
+        },
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      Alert.alert('Error', error.message || `Failed to login with ${provider}`);
+    }
+  };
+
+  const handleLogin = () => {
+    if (loginMethod === 'email') {
+      handleEmailLogin();
+    } else {
+      handlePhoneOTPLogin();
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -55,46 +123,114 @@ export default function Login() {
           </View>
 
           <View style={styles.formContainer}>
-            <View style={styles.inputContainer}>
-              <Mail size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="ईमेल / Email Address"
-                placeholderTextColor="#999"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+            <View style={styles.methodSelector}>
+              <TouchableOpacity
+                style={[styles.methodButton, loginMethod === 'email' && styles.methodButtonActive]}
+                onPress={() => setLoginMethod('email')}
+              >
+                <Mail size={20} color={loginMethod === 'email' ? '#FF4B6E' : '#666'} />
+                <Text style={[styles.methodText, loginMethod === 'email' && styles.methodTextActive]}>
+                  Email
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.methodButton, loginMethod === 'phone' && styles.methodButtonActive]}
+                onPress={() => setLoginMethod('phone')}
+              >
+                <Phone size={20} color={loginMethod === 'phone' ? '#FF4B6E' : '#666'} />
+                <Text style={[styles.methodText, loginMethod === 'phone' && styles.methodTextActive]}>
+                  Phone OTP
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.inputContainer}>
-              <Lock size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="पासवर्ड / Password"
-                placeholderTextColor="#999"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
-            </View>
+            {loginMethod === 'email' ? (
+              <>
+                <View style={styles.inputContainer}>
+                  <Mail size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="ईमेल / Email Address"
+                    placeholderTextColor="#999"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Lock size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="पासवर्ड / Password"
+                    placeholderTextColor="#999"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                  />
+                </View>
+              </>
+            ) : (
+              <View style={styles.inputContainer}>
+                <Phone size={20} color="#666" style={styles.inputIcon} />
+                <Text style={styles.countryCode}>+91</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="फोन नंबर / Phone Number"
+                  placeholderTextColor="#999"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                />
+              </View>
+            )}
 
             <TouchableOpacity
               style={[styles.loginButton, loading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={loading}
             >
-              <LogIn size={20} color="#fff" />
-              <Text style={styles.loginButtonText}>
-                {loading ? 'Logging in...' : 'Login'}
-              </Text>
+              {loginMethod === 'email' ? (
+                <>
+                  <LogIn size={20} color="#fff" />
+                  <Text style={styles.loginButtonText}>
+                    {loading ? 'Logging in...' : 'Login'}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <MessageSquare size={20} color="#fff" />
+                  <Text style={styles.loginButtonText}>
+                    {loading ? 'Sending OTP...' : 'Send OTP'}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>या / OR</Text>
               <View style={styles.dividerLine} />
+            </View>
+
+            <View style={styles.socialButtons}>
+              <TouchableOpacity
+                style={[styles.socialButton, styles.facebookButton]}
+                onPress={() => handleSocialLogin('facebook')}
+              >
+                <Text style={styles.socialIcon}>f</Text>
+                <Text style={styles.socialButtonText}>Facebook</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.socialButton, styles.twitterButton]}
+                onPress={() => handleSocialLogin('twitter')}
+              >
+                <Text style={styles.socialIcon}>𝕏</Text>
+                <Text style={styles.socialButtonText}>X / Twitter</Text>
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity
@@ -161,6 +297,38 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
+  methodSelector: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+  },
+  methodButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  methodButtonActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  methodText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+  },
+  methodTextActive: {
+    color: '#FF4B6E',
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -173,6 +341,12 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     marginRight: 12,
+  },
+  countryCode: {
+    fontSize: 16,
+    color: '#333',
+    marginRight: 8,
+    fontWeight: '600',
   },
   input: {
     flex: 1,
@@ -217,6 +391,39 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     color: '#666',
     fontSize: 14,
+  },
+  socialButtons: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  facebookButton: {
+    backgroundColor: '#1877F2',
+  },
+  twitterButton: {
+    backgroundColor: '#000',
+  },
+  socialIcon: {
+    fontSize: 24,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  socialButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   signupLink: {
     alignItems: 'center',
