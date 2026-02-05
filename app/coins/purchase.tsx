@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Coins, Star, Zap, Check, ArrowLeft, ShoppingBag, RefreshCw } from 'lucide-react-native';
+import { Coins, Star, Zap, Check, ArrowLeft, RefreshCw } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { CoinPackage } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,6 +20,7 @@ export default function CoinPurchaseScreen() {
 
   useEffect(() => {
     initializePurchaseScreen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const initializePurchaseScreen = async () => {
@@ -126,10 +127,6 @@ export default function CoinPurchaseScreen() {
   const renderPackage = (pkg: CoinPackage) => {
     const totalCoins = pkg.coin_amount + pkg.bonus_coins;
     const isSelected = selectedPackage === pkg.id;
-    const productId = Platform.OS === 'ios'
-      ? pkg.app_store_product_id
-      : pkg.play_store_product_id;
-    const hasRevenueCatProduct = productId ? revenueCatPackages.has(productId) : false;
 
     return (
       <TouchableOpacity

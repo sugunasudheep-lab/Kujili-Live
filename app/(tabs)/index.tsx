@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, RefreshControl, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Users, Eye, MapPin, Radio } from 'lucide-react-native';
+import { Eye, MapPin, Radio } from 'lucide-react-native';
 import { supabase, Stream } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 

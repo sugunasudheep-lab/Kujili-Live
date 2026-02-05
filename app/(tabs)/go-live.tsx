@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Radio, Video, MapPin, Globe2 } from 'lucide-react-native';
+import { Radio, Video } from 'lucide-react-native';
 import { supabase, Category } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function GoLiveScreen() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export default function GoLiveScreen() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('streams')
         .insert({
           user_id: user?.id,

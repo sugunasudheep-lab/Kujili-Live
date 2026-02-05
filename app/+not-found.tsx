@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Home } from 'lucide-react-native';
@@ -15,7 +15,7 @@ export default function NotFound() {
       <Text style={styles.title}>Page Not Found</Text>
       <Text style={styles.subtitle}>पेज नहीं मिला</Text>
       <Text style={styles.description}>
-        The page you're looking for doesn't exist
+        The page you&apos;re looking for doesn&apos;t exist
       </Text>
       <TouchableOpacity
         style={styles.button}

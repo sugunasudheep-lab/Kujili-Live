@@ -129,7 +129,7 @@ export default function VerifyOTP() {
 
           <View style={styles.resendContainer}>
             <Text style={styles.resendText}>
-              Didn't receive OTP?
+              Didn&apos;t receive OTP?
             </Text>
             <TouchableOpacity
               onPress={handleResendOTP}

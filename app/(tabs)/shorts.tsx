@@ -25,11 +25,10 @@ export default function ShortsScreen() {
   const [shorts, setShorts] = useState<Short[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
 
   const fetchShorts = async () => {
     try {
-      let query = supabase
+      const query = supabase
         .from('shorts')
         .select(`
           *,
@@ -38,10 +37,6 @@ export default function ShortsScreen() {
         `)
         .order('created_at', { ascending: false })
         .limit(20);
-
-      if (selectedLanguage) {
-        query = query.eq('language', selectedLanguage);
-      }
 
       const { data, error } = await query;
 
@@ -63,7 +58,8 @@ export default function ShortsScreen() {
 
   useEffect(() => {
     fetchShorts();
-  }, [selectedLanguage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);

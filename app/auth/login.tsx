@@ -119,7 +119,7 @@ export default function Login() {
           <View style={styles.header}>
             <Text style={styles.logo}>🎥 Kujili</Text>
             <Text style={styles.subtitle}>भारत का लाइव स्ट्रीमिंग ऐप</Text>
-            <Text style={styles.tagline}>India's #1 Live Streaming App</Text>
+            <Text style={styles.tagline}>India&apos;s #1 Live Streaming App</Text>
           </View>
 
           <View style={styles.formContainer}>
@@ -238,7 +238,7 @@ export default function Login() {
               onPress={() => router.push('/auth/signup')}
             >
               <Text style={styles.signupText}>
-                Don't have an account? <Text style={styles.signupTextBold}>Sign Up</Text>
+                Don&apos;t have an account? <Text style={styles.signupTextBold}>Sign Up</Text>
               </Text>
               <Text style={styles.signupTextHindi}>
                 खाता नहीं है? साइन अप करें
